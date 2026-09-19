@@ -1,0 +1,7 @@
+{
+  "name": "jev-rg-filter",
+  "description": "Context Sniper: ripgrep pre-filter that scores candidate code chunks with JEV (TypeSafe System One) and returns only the 2-3 snippets that actually implement what you asked about.",
+  "version": "0.1.0",
+  "author": { "name": "Jesus Rodriguez" },
+  "keywords": ["search", "ripgrep", "context", "jev", "typesafe"]
+}

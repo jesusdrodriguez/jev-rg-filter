@@ -1,0 +1,11 @@
+{
+  "name": "jev-rg-filter",
+  "owner": { "name": "Jesus Rodriguez" },
+  "plugins": [
+    {
+      "name": "jev-rg-filter",
+      "source": "./",
+      "description": "Context Sniper: ripgrep pre-filter that scores candidate code chunks with JEV and returns only the snippets that implement what you asked about."
+    }
+  ]
+}
