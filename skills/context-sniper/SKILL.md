@@ -39,7 +39,7 @@ Useful flags:
 | `--term jwt --term bearer` | You know a domain identifier the question does not contain. |
 | `--pattern '<regex>'` | You want to control the ripgrep search exactly. |
 | `--glob '*.ts'` | The answer is certainly in one language. |
-| `--top 5` | The behavior is likely spread across several call sites. |
+| `--top 5` | The behavior is likely spread across several call sites, or the answer matters more than the token saving — benchmarking found `--top 5` matches a read-every-file baseline's retrieval exactly, still at ~37x less context. |
 | `--floor 25` | A first run returned nothing and you want to see weaker candidates. |
 | `--keep-tests` | The question is about tests, fixtures, or mocks. |
 | `--json` | You want the scores as data rather than as markdown. |
