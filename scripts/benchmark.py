@@ -51,8 +51,10 @@ DEFAULT_QUERIES = [
         "expect": ["klaptransport.py"],
     },
     {
+        # KLAP derives the AES key outright (sha256(b"lsk" + seeds + hash)[:16]);
+        # AesTransport establishes an AES session from an RSA-wrapped device key.
         "query": "How is the AES session key derived during the handshake?",
-        "expect": ["aestransport.py"],
+        "expect": ["klaptransport.py", "aestransport.py"],
     },
     {
         "query": "Where does device discovery parse the UDP datagram response?",

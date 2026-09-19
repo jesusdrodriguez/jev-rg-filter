@@ -63,7 +63,8 @@ corpus before settling on a default:
 
 ```bash
 for t in 3 5 8; do
-  python scripts/benchmark.py --path ../python-kasa --no-answer --top $t     | grep -E "Right code|Tokens into"
+  python scripts/benchmark.py --path ../python-kasa --no-answer --top $t \
+    | grep -E "Right code|Tokens into"
 done
 ```
 
