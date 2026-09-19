@@ -359,10 +359,11 @@ def build_chunks(hits: dict[str, list[int]], context: int, max_lines: int) -> li
 # ==========================================
 RELEVANCE_RUBRIC = [
     "Irrelevant. The chunk has nothing to do with the question; the keyword appears incidentally.",
-    "Adjacent. Same general subsystem, but this chunk does not do the thing asked about.",
-    "Supporting. Calls into, configures, or wraps the requested logic without implementing it.",
-    "Relevant. Implements a meaningful part of the logic the question asks about.",
-    "Exact. This is the definition and body of the logic the question asks about.",
+    "Superficially similar. It shares vocabulary with the question, or has a similar shape "
+    "(raises, parses, validates), but the specific mechanism the question names is absent.",
+    "Supporting. Calls into, configures, or wraps the requested mechanism without implementing it.",
+    "Relevant. Implements a meaningful part of the exact mechanism the question names.",
+    "Exact. This is the definition and body of the mechanism the question names.",
 ]
 
 CODE_TYPES = {
@@ -374,7 +375,12 @@ CODE_TYPES = {
 
 QUESTIONS = {
     "relevance": Score(
-        instructions="How directly does this code chunk perform the logic the developer's question asks about?",
+        instructions=(
+            "How directly does this chunk implement the specific mechanism the developer's "
+            "question names - both its subject and its action? Sharing keywords with the "
+            "question, or performing a similar-looking operation for a different purpose, "
+            "does not count."
+        ),
         criteria=RELEVANCE_RUBRIC,
     ),
     "code_type": Choice(

@@ -56,6 +56,17 @@ Useful flags: `--runs N` reports the median of N repeats, `--baseline-files N` c
 how generous the baseline is, `--top N` changes how many snippets the sniper keeps, and
 `--json` emits the raw numbers including each arm's full answer text.
 
+## Sweeping the snippet budget
+
+`--top` trades recall against context size, and the sweep is worth running on your own
+corpus before settling on a default:
+
+```bash
+for t in 3 5 8; do
+  python scripts/benchmark.py --path ../python-kasa --no-answer --top $t     | grep -E "Right code|Tokens into"
+done
+```
+
 ## Caveats
 
 - One corpus and five queries is an indication, not a law. Re-run it on your own repo.

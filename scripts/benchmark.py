@@ -66,9 +66,11 @@ DEFAULT_QUERIES = [
                    "aestransport.py", "sslaestransport.py", "ssltransport.py"],
     },
     {
-        # credentials.py is only a dataclass; the hashing is generate_auth_hash in KLAP.
+        # credentials.py is only a dataclass. The hashing is generate_auth_hash (KLAP)
+        # and hash_credentials (the AES and SSL transports) - all verified by reading them.
         "query": "Where are the device credentials hashed for authentication?",
-        "expect": ["klaptransport.py"],
+        "expect": ["klaptransport.py", "aestransport.py", "ssltransport.py",
+                   "sslaestransport.py"],
     },
 ]
 
