@@ -18,6 +18,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import math
 import os
 import re
 import shutil
@@ -176,7 +177,36 @@ def python_scan(pattern: str, path: str, globs: list[str], max_count: int) -> di
     return hits
 
 
-def search(pattern: str, path: str, globs: list[str], max_count: int, engine: str) -> tuple[dict[str, list[int]], str]:
+def prioritize(chunks: list["Chunk"], terms: list[str]) -> list["Chunk"]:
+    """Order candidates before the `--max-chunks` cap, by how *rare* the terms they hit are.
+
+    Sorting by raw match count lets a common word ("device", "response") flood the cap
+    with boilerplate while the chunk that matches the distinctive term ("datagram")
+    never gets scored at all. An IDF weight over distinct matched terms fixes that:
+    hitting two rare terms beats hitting one common term twenty times.
+    """
+    if not terms:
+        return sorted(chunks, key=lambda c: len(c.match_lines), reverse=True)
+
+    patterns = {term: re.compile(re.escape(term), re.IGNORECASE) for term in terms}
+    present: list[set[str]] = [
+        {term for term, regex in patterns.items() if regex.search(chunk.text)} for chunk in chunks
+    ]
+    total = len(chunks)
+    doc_freq = {term: sum(1 for hit in present if term in hit) for term in terms}
+    idf = {term: math.log(1 + total / (1 + count)) for term, count in doc_freq.items()}
+
+    def weight(index: int) -> float:
+        chunk = chunks[index]
+        rarity = sum(idf[term] for term in present[index])
+        # Density still breaks ties, but it can no longer outvote rarity.
+        return rarity + 0.05 * len(chunk.match_lines)
+
+    order = sorted(range(total), key=weight, reverse=True)
+    return [chunks[i] for i in order]
+
+
+def search_one(pattern: str, path: str, globs: list[str], max_count: int, engine: str) -> tuple[dict[str, list[int]], str]:
     if engine in ("auto", "rg"):
         hits = run_ripgrep(pattern, path, globs, max_count)
         if hits is not None:
@@ -185,6 +215,51 @@ def search(pattern: str, path: str, globs: list[str], max_count: int, engine: st
             print("error: ripgrep (rg) was not found on PATH.", file=sys.stderr)
             raise SystemExit(2)
     return python_scan(pattern, path, globs, max_count), "python-scan"
+
+
+# A term matching more of the corpus than this carries no locating signal.
+COMMON_TERM_SHARE = 0.5
+
+
+def search(
+    pattern: str, path: str, globs: list[str], max_count: int, engine: str,
+    terms: list[str] | None = None,
+) -> tuple[dict[str, list[int]], str, list[str]]:
+    """Search, then discard the search terms that turned out to be everywhere.
+
+    A question like "where does device discovery parse the UDP datagram response"
+    yields both `datagram` (which locates the answer) and `device` (which matches half
+    the repo). Searching per term lets us measure that and keep only the informative
+    ones, so the chunk budget is not spent on boilerplate before JEV ever sees it.
+
+    Returns the merged hits, the engine used, and the terms actually kept.
+    """
+    if not terms or len(terms) < 2:
+        hits, engine_used = search_one(pattern, path, globs, max_count, engine)
+        return hits, engine_used, terms or []
+
+    per_term: dict[str, dict[str, list[int]]] = {}
+    engine_used = ""
+    for term in terms:
+        hits, engine_used = search_one(build_pattern([term]), path, globs, max_count, engine)
+        if hits:
+            per_term[term] = hits
+    if not per_term:
+        return {}, engine_used, terms
+
+    corpus = len({file for hits in per_term.values() for file in hits})
+    ranked = sorted(per_term, key=lambda t: len(per_term[t]))
+    kept = [t for t in ranked if len(per_term[t]) <= COMMON_TERM_SHARE * corpus]
+    if not kept:  # every term is common - fall back to the two rarest
+        kept = ranked[:2]
+
+    merged: dict[str, list[int]] = {}
+    for term in kept:
+        for file, lines in per_term[term].items():
+            merged.setdefault(file, []).extend(lines)
+    for lines in merged.values():
+        lines.sort()
+    return merged, engine_used, kept
 
 
 # ==========================================
@@ -483,14 +558,18 @@ def main() -> int:
         return 2
     pattern = args.pattern or build_pattern(terms)
 
-    hits, engine = search(pattern, args.path, args.glob, args.max_count, args.engine)
+    # An explicit --pattern is used verbatim; derived terms get the informative-term pass.
+    hits, engine, terms = search(
+        pattern, args.path, args.glob, args.max_count, args.engine,
+        terms=None if args.pattern else terms,
+    )
     if not hits:
         print(f"No matches for pattern: {pattern}")
         return 0
 
     chunks = build_chunks(hits, args.context, args.max_lines)
-    # Densest chunks first, so the cap keeps the most promising candidates.
-    chunks.sort(key=lambda c: len(c.match_lines), reverse=True)
+    # Rarest-term chunks first, so the cap keeps the most promising candidates.
+    chunks = prioritize(chunks, terms)
     truncated = len(chunks) - args.max_chunks
     chunks = chunks[: args.max_chunks]
 
