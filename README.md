@@ -1,6 +1,6 @@
-# jev-rg-filter — Context Sniper
+# jev-rg-filter — JEV Context Sniper
 
-A Claude Code plugin that answers *"where is X implemented?"* without letting Claude
+A Claude Code JEV plugin that answers *"where is X implemented?"* without letting Claude
 read fifteen files to find two functions.
 
 ## The problem
